@@ -154,6 +154,18 @@ class CefWindowDelegate : public CefPanelDelegate {
   /*--cef()--*/
   virtual bool IsFrameless(CefRefPtr<CefWindow> window) { return false; }
 
+#if CEF_API_ADDED(CEF_EXPERIMENTAL)
+  ///
+  /// Return true if the top-level |window| should be translucent: its
+  /// transparent pixels (a Views-hosted browser with a transparent background,
+  /// a transparent window background color) show what is behind the window,
+  /// e.g. a DWM system backdrop the client sets on Windows. The window keeps
+  /// its resize border. Only called for windows without a native parent.
+  ///
+  /*--cef(added=experimental)--*/
+  virtual bool IsTranslucent(CefRefPtr<CefWindow> window) { return false; }
+#endif
+
   ///
   /// Return true if |window| should be created with standard window buttons
   /// like close, minimize and zoom. This method is only supported on macOS.

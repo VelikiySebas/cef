@@ -67,8 +67,18 @@ std::unique_ptr<CefBrowserPlatformDelegateOsr> CreateOSRDelegate(
 std::unique_ptr<CefBrowserPlatformDelegate> CefBrowserPlatformDelegate::Create(
     const CefBrowserCreateParams& create_params) {
   const bool is_windowless = create_params.IsWindowless();
-  const SkColor background_color = CefContext::Get()->GetBackgroundColor(
-      &create_params.settings, is_windowless ? STATE_ENABLED : STATE_DISABLED);
+  // Red: a Views-hosted browser asked for a transparent background (alpha 0,
+  // non-zero RGB) gets one, as a windowless browser does.
+  const cef_color_t requested = create_params.settings.background_color;
+  const bool views_transparent = create_params.browser_view &&
+                                 CefColorGetA(requested) == 0 &&
+                                 (requested & 0xFFFFFF) != 0;
+  const SkColor background_color =
+      views_transparent
+          ? SK_ColorTRANSPARENT
+          : CefContext::Get()->GetBackgroundColor(
+                &create_params.settings,
+                is_windowless ? STATE_ENABLED : STATE_DISABLED);
 
   if (create_params.IsChromeStyle()) {
     CefWindowInfo window_info;

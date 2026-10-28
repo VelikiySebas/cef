@@ -561,6 +561,10 @@ void CefWindowView::CreateWidget(gfx::AcceleratedWidget parent_widget) {
       DCHECK(!params.bounds.IsEmpty());
     } else {
       is_frameless_ = cef_delegate()->IsFrameless(cef_window);
+      // Red: translucent top-level window (composited with alpha).
+      if (cef_delegate()->IsTranslucent(cef_window)) {
+        params.opacity = views::Widget::InitParams::WindowOpacity::kTranslucent;
+      }
 
       params.native_widget =
           view_util::CreateNativeWidget(widget, cef_window, cef_delegate());

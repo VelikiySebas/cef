@@ -409,6 +409,12 @@ void CefBrowserViewImpl::SetPendingBrowserCreateParams(
 }
 
 void CefBrowserViewImpl::SetDefaults(const CefBrowserSettings& settings) {
+  // Red: see CefBrowserPlatformDelegate::Create (alpha 0, non-zero RGB).
+  if (CefColorGetA(settings.background_color) == 0 &&
+      (settings.background_color & 0xFFFFFF) != 0) {
+    SetBackgroundColor(SK_ColorTRANSPARENT);
+    return;
+  }
   SetBackgroundColor(
       CefContext::Get()->GetBackgroundColor(&settings, STATE_DISABLED));
 }

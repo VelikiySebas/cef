@@ -1721,6 +1721,13 @@ int CefBrowserHostBase::browser_id() const {
 }
 
 SkColor CefBrowserHostBase::GetBackgroundColor() const {
+  // Red: a Views-hosted browser asked for a transparent background (alpha 0,
+  // non-zero RGB, see CefBrowserPlatformDelegate::Create) keeps it as the
+  // page base background too.
+  if (is_views_hosted_ && CefColorGetA(settings_.background_color) == 0 &&
+      (settings_.background_color & 0xFFFFFF) != 0) {
+    return SK_ColorTRANSPARENT;
+  }
   // Don't use |platform_delegate_| because it's not thread-safe.
   return CefContext::Get()->GetBackgroundColor(
       &settings_, IsWindowless() ? STATE_ENABLED : STATE_DISABLED);
