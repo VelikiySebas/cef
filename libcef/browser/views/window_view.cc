@@ -536,7 +536,10 @@ void CefWindowView::CreateWidget(gfx::AcceleratedWidget parent_widget) {
     // - Set the WS_VISIBLE flag.
     params.type = views::Widget::InitParams::TYPE_CONTROL;
     // - Don't set the WS_EX_COMPOSITED flag.
-    params.opacity = views::Widget::InitParams::WindowOpacity::kOpaque;
+    // Red: a translucent child window (its parent shows through).
+    params.opacity = cef_delegate() && cef_delegate()->IsTranslucent(GetCefWindow())
+                         ? views::Widget::InitParams::WindowOpacity::kTranslucent
+                         : views::Widget::InitParams::WindowOpacity::kOpaque;
   } else {
     params.type = views::Widget::InitParams::TYPE_WINDOW;
   }

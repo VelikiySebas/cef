@@ -50,6 +50,9 @@
 #include "ui/base/class_property.h"
 #include "ui/compositor/layer.h"
 #include "ui/compositor/layer_solid_color.h"
+#include "chrome/browser/ui/views/frame/browser_view.h"
+#include "chrome/browser/ui/views/frame/contents_web_view.h"
+#include "ui/views/widget/widget.h"
 #include "ui/compositor/layer_animator.h"
 #include "ui/compositor/scoped_layer_animation_settings.h"
 #include "ui/gfx/animation/tween.h"
@@ -1498,6 +1501,17 @@ void CefBrowserHostBase::SetContentTransform(double scale,
         ui::LayerAnimator::IMMEDIATELY_ANIMATE_TO_NEW_TARGET);
   }
   layer->SetTransform(transform);
+  // Red EXPERIMENT: while scaled, the page's container is see-through (a
+  // translucent page window then shows its parent around the page).
+  if (auto* widget = views::Widget::GetTopLevelWidgetForNativeView(window)) {
+    if (auto* browser_view = BrowserView::GetBrowserViewForNativeWindow(widget->GetNativeWindow())) {
+      for (auto* contents : browser_view->GetAllVisibleContentsWebViews()) {
+        if (contents->web_contents() == web_contents && contents->layer() && contents->layer()->AsSolidColor()) {
+          contents->SetContainerBackgroundVisible(scale >= 1);
+        }
+      }
+    }
+  }
   if (veil) {
     std::optional<ui::ScopedLayerAnimationSettings> fade;
     if (duration_ms > 0) {

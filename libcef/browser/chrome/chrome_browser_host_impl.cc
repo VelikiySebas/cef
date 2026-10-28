@@ -490,10 +490,11 @@ Browser* ChromeBrowserHostImpl::CreateBrowser(
     // require access to the Browser.
     chrome_browser_view->InitBrowser(browser);
 
-    // Don't set theme colors in ContentsWebView::UpdateBackgroundColor.
+    // The embedder supplies the page base/RWHV color. Hide only the Views
+    // container; SetBackgroundVisible(false) also clears the renderer color.
     chrome_browser_view->multi_contents_view()
         ->GetActiveContentsView()
-        ->SetBackgroundVisible(false);
+        ->SetContainerBackgroundVisible(false);
 
     // Don't show the browser by default.
     show_browser = false;

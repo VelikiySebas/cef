@@ -9,6 +9,8 @@
 #include "cef/libcef/browser/views/window_impl.h"
 #include "ui/gfx/native_ui_types.h"
 
+#include <cstdlib>
+
 #if BUILDFLAG(IS_WIN)
 #include "base/functional/callback.h"
 #include "cef/libcef/browser/native/browser_platform_delegate_native_win.h"
@@ -39,8 +41,23 @@ CefWindowHandle GetParentHandle(const CefWindowInfo& window_info) {
 #endif
 }
 
+// Red EXPERIMENT: translucent page windows (RED_TRANSLUCENT_PAGES).
+bool RedTranslucentPages() {
+  static const bool on = std::getenv("RED_TRANSLUCENT_PAGES") != nullptr;
+  return on;
+}
+
 class ChildWindowDelegate : public CefWindowDelegate {
  public:
+  bool IsTranslucent(CefRefPtr<CefWindow> window) override {
+    return RedTranslucentPages();
+  }
+  void OnThemeChanged(CefRefPtr<CefView> view) override {
+    if (RedTranslucentPages()) {
+      view->SetBackgroundColor(0);
+    }
+  }
+
   ChildWindowDelegate(const ChildWindowDelegate&) = delete;
   ChildWindowDelegate& operator=(const ChildWindowDelegate&) = delete;
 
@@ -170,6 +187,12 @@ class ChildWindowDelegate : public CefWindowDelegate {
 
 class ChildBrowserViewDelegate : public CefBrowserViewDelegate {
  public:
+  void OnThemeChanged(CefRefPtr<CefView> view) override {
+    if (RedTranslucentPages()) {
+      view->SetBackgroundColor(0);
+    }
+  }
+
   ChildBrowserViewDelegate() = default;
 
   ChildBrowserViewDelegate(const ChildBrowserViewDelegate&) = delete;
