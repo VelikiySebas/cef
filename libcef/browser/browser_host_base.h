@@ -273,6 +273,11 @@ class CefBrowserHostBase : public CefBrowserHost,
                             const CefSize& max_size) override;
   void SetAudioMuted(bool mute) override;
   bool IsAudioMuted() override;
+  bool NotifyTabActivated() override { return false; }
+  void LoadURLFromInitiator(const CefString& url,
+                            const CefString& initiator_url) override;
+  int RunExtensionAction(const CefString& extension_id,
+                         CefString& popup_url) override;
   void NotifyMoveOrResizeStarted() override;
   void NotifyScreenInfoChanged() override;
   bool IsFullscreen() override;

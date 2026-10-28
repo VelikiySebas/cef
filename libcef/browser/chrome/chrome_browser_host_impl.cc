@@ -15,7 +15,9 @@
 #include "cef/libcef/browser/views/browser_view_impl.h"
 #include "cef/libcef/common/net/url_util.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/ui/browser_active_state_manager/browser_active_state_manager.h"
 #include "chrome/browser/ui/browser_commands.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
 #include "chrome/browser/ui/browser_tabstrip.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/navigator/browser_navigator.h"
@@ -326,6 +328,35 @@ bool ChromeBrowserHostImpl::CanExecuteChromeCommand(int command_id) {
            chrome::IsCommandEnabled(browser_, command_id);
   }
   return false;
+}
+
+bool ChromeBrowserHostImpl::NotifyTabActivated() {
+  if (!CEF_CURRENTLY_ON_UIT()) {
+    DCHECK(false) << "called on invalid thread";
+    return false;
+  }
+  if (!browser_ || is_destroying_browser_) {
+    return false;
+  }
+  // Deactivate the others first so that the target's activation notifies
+  // (and moves it to the front of the activation order) every time.
+  std::vector<BrowserWindowInterface*> others;
+  ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
+      [&](BrowserWindowInterface* other) {
+        if (other != browser_.get()) {
+          others.push_back(other);
+        }
+        return true;
+      });
+  for (auto* other : others) {
+    if (auto* manager = BrowserActiveStateManager::From(other)) {
+      manager->DidBecomeInactive();
+    }
+  }
+  if (auto* manager = BrowserActiveStateManager::From(browser_.get())) {
+    manager->DidBecomeActive();
+  }
+  return true;
 }
 
 void ChromeBrowserHostImpl::ExecuteChromeCommand(

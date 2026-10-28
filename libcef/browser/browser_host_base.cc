@@ -36,6 +36,15 @@
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/render_view_host.h"
 #include "content/public/browser/render_widget_host.h"
+#include "chrome/browser/extensions/extension_action_runner.h"
+#include "content/public/browser/navigation_controller.h"
+#include "content/public/common/referrer.h"
+#include "services/network/public/mojom/referrer_policy.mojom-shared.h"
+#include "url/origin.h"
+#include "components/sessions/content/session_tab_helper.h"
+#include "extensions/browser/extension_action.h"
+#include "extensions/browser/extension_action_manager.h"
+#include "extensions/browser/extension_registry.h"
 #include "ui/base/resource/resource_scale_factor.h"
 #include "ui/gfx/image/image_skia.h"
 #include "ui/shell_dialogs/select_file_policy.h"
@@ -873,6 +882,43 @@ void CefBrowserHostBase::ConfigureAutoResize() {
   }
 }
 
+int CefBrowserHostBase::RunExtensionAction(const CefString& extension_id,
+                                           CefString& popup_url) {
+  if (!CEF_CURRENTLY_ON_UIT()) {
+    DCHECK(false) << "called on invalid thread";
+    return 0;
+  }
+  auto web_contents = GetWebContents();
+  if (!web_contents) {
+    return 0;
+  }
+  // Attached to Chrome style tabs by the extensions tab helpers.
+  auto* runner =
+      extensions::ExtensionActionRunner::GetForWebContents(web_contents);
+  if (!runner) {
+    return 0;
+  }
+  auto* context = web_contents->GetBrowserContext();
+  const auto* extension = extensions::ExtensionRegistry::Get(context)
+                              ->enabled_extensions()
+                              .GetByID(extension_id.ToString());
+  auto* action =
+      extension
+          ? extensions::ExtensionActionManager::Get(context)->GetExtensionAction(
+                *extension)
+          : nullptr;
+  if (!action) {
+    return 0;
+  }
+  if (runner->RunAction(extension, /*grant_tab_permissions=*/true) !=
+      extensions::ExtensionAction::ShowAction::kShowPopup) {
+    return 2;
+  }
+  popup_url = action->GetPopupUrl(
+      sessions::SessionTabHelper::IdForTab(web_contents).id()).spec();
+  return 1;
+}
+
 void CefBrowserHostBase::SetAudioMuted(bool mute) {
   if (!CEF_CURRENTLY_ON_UIT()) {
     CEF_POST_TASK(CEF_UIT, base::BindOnce(&CefBrowserHostBase::SetAudioMuted,
@@ -1384,6 +1430,37 @@ void CefBrowserHostBase::LoadMainFrameURL(
   if (Navigate(params)) {
     OnSetFocus(FOCUS_SOURCE_NAVIGATION);
   }
+}
+
+void CefBrowserHostBase::LoadURLFromInitiator(const CefString& url,
+                                              const CefString& initiator_url) {
+  if (!CEF_CURRENTLY_ON_UIT()) {
+    CEF_POST_TASK(CEF_UIT,
+                  base::BindOnce(&CefBrowserHostBase::LoadURLFromInitiator,
+                                 this, url, initiator_url));
+    return;
+  }
+  auto web_contents = GetWebContents();
+  if (!web_contents) {
+    return;
+  }
+  const GURL target(url.ToString());
+  const GURL initiator(initiator_url.ToString());
+  if (!target.is_valid() || !target.SchemeIsHTTPOrHTTPS() ||
+      !initiator.is_valid() || !initiator.SchemeIsHTTPOrHTTPS()) {
+    return;
+  }
+  // As RenderViewContextMenu's "Open link in new tab": browser-initiated, with
+  // the source page as initiator and its default-policy referrer.
+  content::NavigationController::LoadURLParams params(target);
+  params.initiator_origin = url::Origin::Create(initiator);
+  params.referrer = content::Referrer::SanitizeForRequest(
+      target, content::Referrer(initiator.GetAsReferrer(),
+                                network::mojom::ReferrerPolicy::kDefault));
+  params.transition_type = ui::PAGE_TRANSITION_LINK;
+  params.has_user_gesture = true;
+  web_contents->GetController().LoadURLWithParams(params);
+  OnSetFocus(FOCUS_SOURCE_NAVIGATION);
 }
 
 bool CefBrowserHostBase::Navigate(const content::OpenURLParams& params) {

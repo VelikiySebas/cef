@@ -1009,6 +1009,49 @@ class CefBrowserHost : public virtual CefBaseRefCounted {
   /*--cef()--*/
   virtual bool IsAudioMuted() = 0;
 
+#if CEF_API_ADDED(CEF_EXPERIMENTAL)
+  ///
+  /// Runs the toolbar action of the extension with |extension_id| for this
+  /// browser's page, as a click on its toolbar button would: grants the
+  /// per-tab permissions ("activeTab", including tab capture when requested)
+  /// and, for an action without a popup, dispatches action.onClicked to the
+  /// extension. For hosts that show extension actions themselves. Returns 1 if
+  /// the action has a popup that the host should show (its current URL, which
+  /// the extension may change at runtime, is set in |popup_url|), 2 if the
+  /// action ran without one, or 0 if nothing ran (unknown or disabled
+  /// extension, no action, or not a Chrome style browser). This method can only
+  /// be called on the UI thread.
+  ///
+  /*--cef(added=experimental)--*/
+  virtual int RunExtensionAction(const CefString& extension_id,
+                                 CefString& popup_url) = 0;
+
+  ///
+  /// Marks this browser as the one the user is looking at, for hosts that
+  /// show several Chrome style browsers as tabs of one top-level window (their
+  /// child windows never become active, so Chrome would otherwise treat the
+  /// most recently created browser as the last active one). Extension APIs
+  /// such as tabs.query({currentWindow}), windows.getLastFocused and tab
+  /// capture then resolve to this browser's page. Returns false if this is not
+  /// a Chrome style browser. This method can only be called on the UI thread.
+  ///
+  /*--cef(added=experimental)--*/
+  virtual bool NotifyTabActivated() = 0;
+
+  ///
+  /// Loads |url| in the main frame as a link opened from the page at
+  /// |initiator_url|, the way Chrome opens a link in a new tab: the
+  /// navigation carries that page's origin as its initiator and a referrer
+  /// sanitized by the default referrer policy, so websites see a cross-site
+  /// link (Sec-Fetch-Site, SameSite cookies, Referer) instead of a typed
+  /// address. Both URLs must be HTTP(S); otherwise nothing is loaded. For hosts
+  /// that open a page's links in browsers they create themselves.
+  ///
+  /*--cef(added=experimental)--*/
+  virtual void LoadURLFromInitiator(const CefString& url,
+                                    const CefString& initiator_url) = 0;
+#endif
+
   ///
   /// Returns true if the renderer is currently in browser fullscreen. This
   /// differs from window fullscreen in that browser fullscreen is entered using
