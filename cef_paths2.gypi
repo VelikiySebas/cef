@@ -582,6 +582,7 @@
       'tests/ceftests/display_unittest.cc',
       'tests/ceftests/dom_unittest.cc',
       'tests/ceftests/download_unittest.cc',
+      'tests/ceftests/extension_resources_unittest.cc',
       'tests/ceftests/draggable_regions_unittest.cc',
       'tests/ceftests/file_util_unittest.cc',
       'tests/ceftests/find_handler_unittest.cc',
