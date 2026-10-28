@@ -605,6 +605,13 @@ bool ChromeBrowserDelegate::IsViewsHosted() const {
          create_params_.popup_with_views_hosted_opener;
 }
 
+bool ChromeBrowserDelegate::IsClientCreatedTab() const {
+  return create_params_.browser_view != nullptr &&
+         !create_params_.popup_with_views_hosted_opener &&
+         !create_params_.popup_with_alloy_style_opener &&
+         browser_->GetType() == BrowserWindowInterface::TYPE_POPUP;
+}
+
 CefWindowImpl* ChromeBrowserDelegate::GetCefWindowImpl() const {
   if (IsViewsHosted()) {
     if (auto* chrome_browser_view = static_cast<ChromeBrowserView*>(

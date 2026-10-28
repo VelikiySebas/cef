@@ -194,6 +194,12 @@ class BrowserDelegate {
   // Returns true if this browser is Views-hosted.
   virtual bool IsViewsHosted() const { return false; }
 
+  // Red: true for a page the client created itself (CefBrowserHost /
+  // CefBrowserView, including SetAsChild windows), which CEF turns into a
+  // TYPE_POPUP Browser to hide Chrome's controls. Extensions should see it as
+  // a normal window; popups opened by web content stay "popup".
+  virtual bool IsClientCreatedTab() const { return false; }
+
   // Returns true if this browser has a Views-hosted opener. Only
   // applicable for Browsers of type picture_in_picture and devtools.
   virtual bool HasViewsHostedOpener() const { return false; }

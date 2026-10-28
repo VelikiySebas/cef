@@ -86,6 +86,7 @@ class ChromeBrowserDelegate : public cef::BrowserDelegate {
   const std::optional<SkRegion> GetDraggableRegion() const override;
   void WindowFullscreenStateChanged() override;
   bool IsViewsHosted() const override;
+  bool IsClientCreatedTab() const override;
   bool HasViewsHostedOpener() const override;
 
   Browser* browser() const { return browser_; }
