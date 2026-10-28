@@ -46,6 +46,8 @@
 #include "extensions/browser/extension_action_manager.h"
 #include "extensions/browser/extension_registry.h"
 #include "ui/base/resource/resource_scale_factor.h"
+#include "content/public/browser/media_session.h"
+#include "services/media_session/public/mojom/media_session.mojom.h"
 #include "ui/gfx/image/image_skia.h"
 #include "ui/shell_dialogs/select_file_policy.h"
 
@@ -1430,6 +1432,37 @@ void CefBrowserHostBase::LoadMainFrameURL(
   if (Navigate(params)) {
     OnSetFocus(FOCUS_SOURCE_NAVIGATION);
   }
+}
+
+bool CefBrowserHostBase::MediaSessionAction(const CefString& action) {
+  using media_session::mojom::MediaSessionAction;
+  static constexpr std::pair<const char*, MediaSessionAction> kActions[] = {
+      {"play", MediaSessionAction::kPlay},
+      {"pause", MediaSessionAction::kPause},
+      {"previoustrack", MediaSessionAction::kPreviousTrack},
+      {"nexttrack", MediaSessionAction::kNextTrack},
+      {"seekbackward", MediaSessionAction::kSeekBackward},
+      {"seekforward", MediaSessionAction::kSeekForward},
+      {"skipad", MediaSessionAction::kSkipAd},
+      {"stop", MediaSessionAction::kStop}};
+  const std::string name = action.ToString();
+  for (const auto& [label, value] : kActions) {
+    if (name != label) {
+      continue;
+    }
+    CEF_POST_TASK(CEF_UIT, base::BindOnce(
+                               [](CefRefPtr<CefBrowserHostBase> self,
+                                  MediaSessionAction value) {
+                                 if (auto web_contents =
+                                         self->GetWebContents()) {
+                                   content::MediaSession::Get(web_contents)
+                                       ->DidReceiveAction(value);
+                                 }
+                               },
+                               CefRefPtr<CefBrowserHostBase>(this), value));
+    return true;
+  }
+  return false;
 }
 
 void CefBrowserHostBase::LoadURLFromInitiator(const CefString& url,

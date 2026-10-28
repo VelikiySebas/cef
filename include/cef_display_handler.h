@@ -213,6 +213,18 @@ class CefDisplayHandler : public virtual CefBaseRefCounted {
   /*--cef(added=experimental)--*/
   virtual void OnAudibleStateChange(CefRefPtr<CefBrowser> browser,
                                     bool audible) {}
+
+  ///
+  /// Called when the page's Media Session changes (as Chrome's media controls
+  /// see it). |info| has "title", "artist", "album" (strings), "artwork" (the
+  /// largest artwork image URL, or empty), "playing" (bool) and "actions" (a
+  /// list of the action names the page handles; see
+  /// CefBrowserHost::MediaSessionAction). Called with an empty |info| when the
+  /// session ends.
+  ///
+  /*--cef(added=experimental)--*/
+  virtual void OnMediaSessionChanged(CefRefPtr<CefBrowser> browser,
+                                     CefRefPtr<CefDictionaryValue> info) {}
 #endif
 };
 

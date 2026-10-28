@@ -1050,6 +1050,15 @@ class CefBrowserHost : public virtual CefBaseRefCounted {
   /*--cef(added=experimental)--*/
   virtual void LoadURLFromInitiator(const CefString& url,
                                     const CefString& initiator_url) = 0;
+
+  ///
+  /// Performs a Media Session action on the page as Chrome's media controls
+  /// do: "play", "pause", "previoustrack", "nexttrack", "seekbackward",
+  /// "seekforward", "skipad" or "stop". Returns false for an unknown action.
+  /// The page's own action handlers run when it registered them.
+  ///
+  /*--cef(added=experimental)--*/
+  virtual bool MediaSessionAction(const CefString& action) = 0;
 #endif
 
   ///

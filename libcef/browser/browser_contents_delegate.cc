@@ -16,6 +16,9 @@
 #include "components/input/native_web_keyboard_event.h"
 #include "content/browser/renderer_host/render_widget_host_impl.h"
 #include "content/public/browser/focused_node_details.h"
+#include "content/public/browser/media_session.h"
+#include "services/media_session/public/cpp/media_image.h"
+#include "services/media_session/public/cpp/media_metadata.h"
 #include "content/public/browser/keyboard_event_processing_result.h"
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/navigation_handle.h"
@@ -84,6 +87,120 @@ class CefWidgetHostInterceptor
 
 }  // namespace
 
+// Red: collects what Chrome's media controls see of the page's Media Session
+// and reports it as one dictionary whenever any part changes.
+class CefBrowserContentsDelegate::MediaSessionWatch
+    : public media_session::mojom::MediaSessionObserver {
+ public:
+  MediaSessionWatch(CefBrowserContentsDelegate* owner,
+                    content::MediaSession* media_session)
+      : owner_(owner) {
+    media_session->AddObserver(receiver_.BindNewPipeAndPassRemote());
+  }
+
+  void MediaSessionInfoChanged(
+      media_session::mojom::MediaSessionInfoPtr info) override {
+    playing_ = info && info->playback_state ==
+                           media_session::mojom::MediaPlaybackState::kPlaying;
+    Report();
+  }
+  void MediaSessionMetadataChanged(
+      const std::optional<media_session::MediaMetadata>& metadata) override {
+    metadata_ = metadata.value_or(media_session::MediaMetadata());
+    Report();
+  }
+  void MediaSessionActionsChanged(
+      const std::vector<media_session::mojom::MediaSessionAction>& actions)
+      override {
+    actions_ = actions;
+    Report();
+  }
+  void MediaSessionImagesChanged(
+      const base::flat_map<media_session::mojom::MediaSessionImageType,
+                           std::vector<media_session::MediaImage>>& images)
+      override {
+    artwork_.clear();
+    const auto found =
+        images.find(media_session::mojom::MediaSessionImageType::kArtwork);
+    int best = -1;
+    if (found != images.end()) {
+      for (const auto& image : found->second) {
+        int area = 0;
+        for (const auto& size : image.sizes) {
+          area = std::max(area, size.width() * size.height());
+        }
+        if (image.src.is_valid() && area > best) {
+          best = area;
+          artwork_ = image.src.spec();
+        }
+      }
+    }
+    Report();
+  }
+  void MediaSessionPositionChanged(
+      const std::optional<media_session::MediaPosition>& position) override {}
+
+ private:
+  void Report() {
+    auto info = CefDictionaryValue::Create();
+    info->SetString("title", metadata_.title);
+    info->SetString("artist", metadata_.artist);
+    info->SetString("album", metadata_.album);
+    info->SetString("artwork", artwork_);
+    info->SetBool("playing", playing_);
+    auto list = CefListValue::Create();
+    for (const auto action : actions_) {
+      const char* name = nullptr;
+      switch (action) {
+        case media_session::mojom::MediaSessionAction::kPlay: name = "play"; break;
+        case media_session::mojom::MediaSessionAction::kPause: name = "pause"; break;
+        case media_session::mojom::MediaSessionAction::kPreviousTrack: name = "previoustrack"; break;
+        case media_session::mojom::MediaSessionAction::kNextTrack: name = "nexttrack"; break;
+        case media_session::mojom::MediaSessionAction::kSeekBackward: name = "seekbackward"; break;
+        case media_session::mojom::MediaSessionAction::kSeekForward: name = "seekforward"; break;
+        case media_session::mojom::MediaSessionAction::kSkipAd: name = "skipad"; break;
+        case media_session::mojom::MediaSessionAction::kStop: name = "stop"; break;
+        default: break;
+      }
+      if (name) {
+        list->SetString(list->GetSize(), name);
+      }
+    }
+    info->SetList("actions", list);
+    owner_->ReportMediaSession(info);
+  }
+
+  raw_ptr<CefBrowserContentsDelegate> owner_;
+  mojo::Receiver<media_session::mojom::MediaSessionObserver> receiver_{this};
+  media_session::MediaMetadata metadata_;
+  std::vector<media_session::mojom::MediaSessionAction> actions_;
+  std::string artwork_;
+  bool playing_ = false;
+};
+
+CefBrowserContentsDelegate::~CefBrowserContentsDelegate() = default;
+
+void CefBrowserContentsDelegate::WatchMediaSession(
+    content::MediaSession* media_session) {
+  media_session_watch_ =
+      media_session ? std::make_unique<MediaSessionWatch>(this, media_session)
+                    : nullptr;
+}
+
+void CefBrowserContentsDelegate::ReportMediaSession(
+    CefRefPtr<CefDictionaryValue> info) {
+  if (auto c = client()) {
+    if (auto handler = c->GetDisplayHandler()) {
+      handler->OnMediaSessionChanged(browser(), info);
+    }
+  }
+}
+
+void CefBrowserContentsDelegate::MediaSessionCreated(
+    content::MediaSession* media_session) {
+  WatchMediaSession(media_session);
+}
+
 CefBrowserContentsDelegate::CefBrowserContentsDelegate(
     scoped_refptr<CefBrowserInfo> browser_info)
     : browser_info_(browser_info) {}
@@ -91,6 +208,9 @@ CefBrowserContentsDelegate::CefBrowserContentsDelegate(
 void CefBrowserContentsDelegate::ObserveWebContents(
     content::WebContents* new_contents) {
   WebContentsObserver::Observe(new_contents);
+  // Red: a session that already exists is not announced again.
+  WatchMediaSession(new_contents ? content::MediaSession::GetIfExists(new_contents)
+                                 : nullptr);
 
   if (new_contents) {
     // Make sure MaybeCreateFrame is called at least one time.
