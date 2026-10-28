@@ -623,6 +623,14 @@ void CefBrowserContentsDelegate::TitleWasSet(content::NavigationEntry* entry) {
   }
 }
 
+void CefBrowserContentsDelegate::OnAudioStateChanged(bool audible) {
+  if (auto c = client()) {
+    if (auto handler = c->GetDisplayHandler()) {
+      handler->OnAudibleStateChange(browser(), audible);
+    }
+  }
+}
+
 void CefBrowserContentsDelegate::DidUpdateFaviconURL(
     content::RenderFrameHost* render_frame_host,
     const std::vector<blink::mojom::FaviconURLPtr>& candidates,

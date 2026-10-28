@@ -203,6 +203,17 @@ class CefDisplayHandler : public virtual CefBaseRefCounted {
     return false;
   }
 #endif
+
+#if CEF_API_ADDED(CEF_EXPERIMENTAL)
+  ///
+  /// Called when the browser starts or stops producing audible sound (the
+  /// state behind Chrome's tab speaker icon; covers media elements, Web Audio
+  /// and calls, with Chrome's short hold-off after sound stops).
+  ///
+  /*--cef(added=experimental)--*/
+  virtual void OnAudibleStateChange(CefRefPtr<CefBrowser> browser,
+                                    bool audible) {}
+#endif
 };
 
 #endif  // CEF_INCLUDE_CEF_DISPLAY_HANDLER_H_
