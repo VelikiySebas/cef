@@ -1,0 +1,13 @@
+{
+  "name": "sol-156",
+  "repository": "https://github.com/VelikiySebas/cef.git",
+  "upstream_repository": "https://github.com/chromiumembedded/cef.git",
+  "upstream_revision": "4fa4ab516dacf6c49fc7e6e70d2b7ebce29fa35f",
+  "cef_branch": "8078",
+  "chromium_tag": "refs/tags/156.0.8078.48",
+  "chromium_revision": "d0c02bfad08ec92a6ffcf989e53cd995e6381a4c",
+  "feature_groups": 14,
+  "chromium_patches": 7,
+  "original_extension_fix": "fdb790067f3d1057f3c8b2ce28867dee12099f89",
+  "build_environment": "local Windows PC"
+}
