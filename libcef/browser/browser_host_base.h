@@ -280,6 +280,15 @@ class CefBrowserHostBase : public CefBrowserHost,
   void SetContentTransform(double scale,
                            double dim,
                            int duration_ms) override;
+  void SetContentContainerTransform(double scale,
+                                    double dim,
+                                    int duration_ms,
+                                    cef_color_t veil_color) override;
+  void ApplyContentTransform(double scale,
+                             double dim,
+                             int duration_ms,
+                             cef_color_t veil_color,
+                             bool container);
   int RunExtensionAction(const CefString& extension_id,
                          CefString& popup_url) override;
   void NotifyMoveOrResizeStarted() override;

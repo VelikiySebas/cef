@@ -9,7 +9,7 @@
 #include "cef/libcef/browser/views/window_impl.h"
 #include "ui/gfx/native_ui_types.h"
 
-#include <cstdlib>
+#include "base/command_line.h"
 
 #if BUILDFLAG(IS_WIN)
 #include "base/functional/callback.h"
@@ -41,10 +41,11 @@ CefWindowHandle GetParentHandle(const CefWindowInfo& window_info) {
 #endif
 }
 
-// Red EXPERIMENT: translucent page windows (RED_TRANSLUCENT_PAGES).
+// The embedder opts in before window creation; transparency cannot be
+// retrofitted after a native Chrome child has acquired its compositor.
 bool RedTranslucentPages() {
-  static const bool on = std::getenv("RED_TRANSLUCENT_PAGES") != nullptr;
-  return on;
+  return base::CommandLine::ForCurrentProcess()->HasSwitch(
+      "red-translucent-child-windows");
 }
 
 class ChildWindowDelegate : public CefWindowDelegate {

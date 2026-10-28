@@ -1072,6 +1072,21 @@ class CefBrowserHost : public virtual CefBaseRefCounted {
   virtual void SetContentTransform(double scale,
                                    double dim,
                                    int duration_ms) = 0;
+
+  ///
+  /// Animates the persistent Chrome page container as one compositor subtree:
+  /// live document, rounded 6-DIP clip and theme-colored veil. The native child
+  /// window and the document viewport retain their size. Requires the embedder
+  /// to opt in to red-translucent-child-windows before creating child windows.
+  /// Scale is clamped to [0.5, 1], dim to [0, 1]; duration is milliseconds.
+  /// The alpha of veil_color is ignored (dim controls opacity). Scale 1/dim 0
+  /// restores the container. Reapply after resize. UI-thread dispatch is safe.
+  ///
+  /*--cef(added=experimental)--*/
+  virtual void SetContentContainerTransform(double scale,
+                                            double dim,
+                                            int duration_ms,
+                                            cef_color_t veil_color) = 0;
 #endif
 
   ///
