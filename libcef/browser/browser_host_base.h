@@ -277,6 +277,9 @@ class CefBrowserHostBase : public CefBrowserHost,
   void LoadURLFromInitiator(const CefString& url,
                             const CefString& initiator_url) override;
   bool MediaSessionAction(const CefString& action) override;
+  void SetContentTransform(double scale,
+                           double dim,
+                           int duration_ms) override;
   int RunExtensionAction(const CefString& extension_id,
                          CefString& popup_url) override;
   void NotifyMoveOrResizeStarted() override;

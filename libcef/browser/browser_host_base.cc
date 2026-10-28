@@ -46,6 +46,14 @@
 #include "extensions/browser/extension_action_manager.h"
 #include "extensions/browser/extension_registry.h"
 #include "ui/base/resource/resource_scale_factor.h"
+#include "ui/aura/window.h"
+#include "ui/base/class_property.h"
+#include "ui/compositor/layer.h"
+#include "ui/compositor/layer_solid_color.h"
+#include "ui/compositor/layer_animator.h"
+#include "ui/compositor/scoped_layer_animation_settings.h"
+#include "ui/gfx/animation/tween.h"
+#include "ui/gfx/geometry/transform.h"
 #include "content/public/browser/media_session.h"
 #include "services/media_session/public/mojom/media_session.mojom.h"
 #include "ui/gfx/image/image_skia.h"
@@ -1431,6 +1439,76 @@ void CefBrowserHostBase::LoadMainFrameURL(
 
   if (Navigate(params)) {
     OnSetFocus(FOCUS_SOURCE_NAVIGATION);
+  }
+}
+
+// The black veil over a page dimmed by SetContentTransform, owned by the
+// page's window (it goes with it).
+DEFINE_UI_CLASS_PROPERTY_TYPE(ui::LayerSolidColor*)
+DEFINE_OWNED_UI_CLASS_PROPERTY_KEY(ui::LayerSolidColor, kContentVeilKey)
+
+void CefBrowserHostBase::SetContentTransform(double scale,
+                                             double dim,
+                                             int duration_ms) {
+  if (!CEF_CURRENTLY_ON_UIT()) {
+    CEF_POST_TASK(CEF_UIT,
+                  base::BindOnce(&CefBrowserHostBase::SetContentTransform,
+                                 this, scale, dim, duration_ms));
+    return;
+  }
+  auto web_contents = GetWebContents();
+  if (!web_contents || IsWindowless()) {
+    return;
+  }
+  aura::Window* window = web_contents->GetNativeView();
+  if (!window || !window->layer()) {
+    return;
+  }
+  scale = std::clamp(scale, 0.5, 1.0);
+  dim = std::clamp(dim, 0.0, 1.0);
+  ui::Layer* layer = window->layer();
+  const gfx::Size size = window->bounds().size();
+  // The veil is a child of the content layer, so it scales with the page; it
+  // is restacked on top (a new renderer view is added above it).
+  ui::LayerSolidColor* veil = window->GetProperty(kContentVeilKey);
+  if (!veil && dim > 0) {
+    auto owned = std::make_unique<ui::LayerSolidColor>();
+    owned->SetColor(SkColors::kBlack);
+    owned->SetOpacity(0);
+    owned->SetName("RedContentVeil");
+    veil = owned.get();
+    layer->Add(veil);
+    window->SetProperty(kContentVeilKey, std::move(owned));
+  }
+  if (veil) {
+    veil->SetBounds(gfx::Rect(size));
+    layer->StackAtTop(veil);
+  }
+  gfx::Transform transform;
+  transform.Translate(size.width() * (1 - scale) / 2,
+                      size.height() * (1 - scale) / 2);
+  transform.Scale(scale, scale);
+  std::optional<ui::ScopedLayerAnimationSettings> animation;
+  if (duration_ms > 0) {
+    animation.emplace(layer->GetAnimator());
+    animation->SetTransitionDuration(
+        base::Milliseconds(std::min(duration_ms, 2000)));
+    animation->SetTweenType(gfx::Tween::FAST_OUT_SLOW_IN);
+    animation->SetPreemptionStrategy(
+        ui::LayerAnimator::IMMEDIATELY_ANIMATE_TO_NEW_TARGET);
+  }
+  layer->SetTransform(transform);
+  if (veil) {
+    std::optional<ui::ScopedLayerAnimationSettings> fade;
+    if (duration_ms > 0) {
+      fade.emplace(veil->GetAnimator());
+      fade->SetTransitionDuration(
+          base::Milliseconds(std::min(duration_ms, 2000)));
+      fade->SetTweenType(gfx::Tween::FAST_OUT_SLOW_IN);
+      fade->SetPreemptionStrategy(
+          ui::LayerAnimator::IMMEDIATELY_ANIMATE_TO_NEW_TARGET);
+    }
+    veil->SetOpacity(static_cast<float>(dim));
   }
 }
 

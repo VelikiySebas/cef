@@ -1059,6 +1059,19 @@ class CefBrowserHost : public virtual CefBaseRefCounted {
   ///
   /*--cef(added=experimental)--*/
   virtual bool MediaSessionAction(const CefString& action) = 0;
+
+  ///
+  /// Scales the page's content about its center (|scale| 0.5 to 1) and dims
+  /// it with a black veil (|dim| 0 to 1, the veil's opacity) inside the
+  /// browser's own window, animated by the compositor over |duration_ms| (0
+  /// applies at once). The page stays live (video, scripts and input keep
+  /// running). Scale 1 and dim 0 restore it. Call again after the browser
+  /// window is resized. Windowless browsers are not supported.
+  ///
+  /*--cef(added=experimental)--*/
+  virtual void SetContentTransform(double scale,
+                                   double dim,
+                                   int duration_ms) = 0;
 #endif
 
   ///
